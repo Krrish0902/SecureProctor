@@ -25,17 +25,24 @@ const RiskMeter = ({ riskScore, riskFactors }) => {
       const currentChange = riskScore - previousScore;
       setScoreChange(currentChange);
       
-      if (Math.abs(currentChange) >= 15) {
-        let primaryFactor = getPrimaryRiskFactor(riskFactors);
-        const changeReason = currentChange > 0 
-          ? "Risk increased due to suspicious behavior patterns."
-          : "Risk decreased as behavior returned to normal patterns.";
-        
+      if (Math.abs(currentChange) >= 2) {
         let message = {
           title: `Risk Level ${currentChange > 0 ? 'Increased' : 'Decreased'}`,
-          subtitle: changeReason,
+          subtitle: currentChange > 0 
+            ? "Risk increased due to suspicious behavior patterns."
+            : "Risk decreased due to consistent good behavior.",
           details: []
         };
+
+        // If risk is decreasing due to time
+        if (riskFactors && !riskFactors.hasNewRiskFactors && currentChange < 0) {
+          const minutes = Math.floor(riskFactors.timeSinceLastRisk / 60);
+          message.details.push({
+            factor: 'Good Behavior',
+            detail: `No suspicious activity detected for ${minutes} minutes`,
+            severity: 'Low'
+          });
+        }
 
         // Add risk factor details based on change direction
         if (riskFactors) {
@@ -67,6 +74,13 @@ const RiskMeter = ({ riskScore, riskFactors }) => {
                 factor: 'Mouse Movement',
                 detail: 'Unusual mouse movement patterns detected',
                 severity: riskFactors.mouseSpeed > 3 ? 'High' : 'Moderate'
+              });
+            }
+            if (riskFactors.mouseExit && (riskFactors.mouseExit.regular > 50 || riskFactors.mouseExit.tabBar > 50)) {
+              message.details.push({
+                factor: 'Mouse Exit Pattern',
+                detail: `${riskFactors.mouseExit.tabBarExits} tab bar exits detected. ${riskFactors.mouseExit.totalExits} total exits.`,
+                severity: riskFactors.mouseExit.tabBar > 50 ? 'High' : 'Moderate'
               });
             }
           } else {
