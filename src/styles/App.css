@@ -150,6 +150,36 @@
   margin-top: 0.25rem;
 }
 
+/* Popup Warning Styles */
+.warning-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+  max-width: 400px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* Home Page Styles */
 .home-container {
   padding: 2rem 0;
@@ -245,4 +275,4 @@
 .step h3 {
   color: var(--primary-color);
   margin-bottom: 1rem;
-} 
+}

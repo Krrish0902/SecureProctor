@@ -69,7 +69,24 @@ class UserBehaviorModel {
     
     return false;
   }
-  
+ 
+  // Add methods for enhanced pattern analysis
+  analyzeKeystrokePattern(keystrokes) {
+    return {
+      meanLatency: this.average(keystrokes.map(k => k.latency)),
+      stdDevLatency: this.standardDeviation(keystrokes.map(k => k.latency)),
+      meanDuration: this.average(keystrokes.map(k => k.pressDuration)),
+      stdDevDuration: this.standardDeviation(keystrokes.map(k => k.pressDuration))
+    };
+  }
+
+  analyzeMousePattern(movements) {
+    return {
+      meanSpeed: this.average(movements.map(m => m.speed)),
+      stdDevSpeed: this.standardDeviation(movements.map(m => m.speed)),
+      directionChanges: this.average(movements.map(m => m.directionChange || 0))
+    };
+  }
   /**
    * Add behavioral data to the model
    * @param {Object} behaviorWindow - Current behavior window data
@@ -160,6 +177,23 @@ class UserBehaviorModel {
     const currentTabSwitchFrequency = 
       currentWindow.tabSwitches / (currentWindow.durationSeconds / 60); // per minute
     
+    // Add inactivity check
+  const isInactive = 
+  (!currentWindow.keystrokes || currentWindow.keystrokes.length === 0) &&
+  (!currentWindow.mouseMovements || currentWindow.mouseMovements.length === 0);
+
+  if (isInactive) {
+    return {
+      score: 75, // High risk score for complete inactivity
+      factors: {
+        keyLatency: 0,
+        tabSwitchFrequency: 0,
+        mouseSpeed: 0,
+        mouseDirectionChange: 0,
+        inactivity: true // New flag to indicate inactivity
+      }
+    };
+  }  
     // Calculate deviations from baseline (z-scores)
     let deviations = {};
     
@@ -231,7 +265,15 @@ class UserBehaviorModel {
     // Normalize to 0-100 scale
     const anomalyScore = Math.min(100, (weightedScore / totalWeight) * 100);
     
-    return anomalyScore;
+    return {
+      score: anomalyScore,
+      factors: {
+        keyLatency: deviations.keyLatency,
+        tabSwitchFrequency: deviations.tabSwitchFrequency,
+        mouseSpeed: deviations.mouseSpeed,
+        mouseDirectionChange: deviations.mouseDirectionChange
+      }
+    };
   }
   
   /**
@@ -372,6 +414,50 @@ class UserBehaviorModel {
     const avgSquareDiff = this.average(squareDiffs);
     return Math.sqrt(avgSquareDiff);
   }
+
+  /**
+   * Force recalculation of baseline from scratch
+   * @param {Function} onProgressUpdate - Callback for progress updates
+   * @param {Function} onComplete - Callback when complete
+   */
+  recalculateBaseline(onProgressUpdate = null, onComplete = null) {
+    this.onBaselineProgressUpdate = onProgressUpdate;
+    this.onBaselineComplete = onComplete;
+    
+    // Reset all metrics
+    this.keyMetrics = [];
+    this.mouseMetrics = [];
+    this.focusMetrics = [];
+    this.baselineProgress = 0;
+    this.baselineEstablished = false;
+    
+    // Clear existing model from storage
+    localStorage.removeItem(`userModel_${this.userId}`);
+    
+    console.log('Starting baseline recalculation');
+    
+    // Start a new collection period
+    const startTime = Date.now();
+    const baselineTimer = setInterval(() => {
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      this.baselineProgress = Math.min(100, (elapsedSeconds / this.baselineWindowSize) * 100);
+      
+      if (this.onBaselineProgressUpdate) {
+        this.onBaselineProgressUpdate(this.baselineProgress);
+      }
+      
+      if (elapsedSeconds >= this.baselineWindowSize) {
+        clearInterval(baselineTimer);
+        this.computeBaseline();
+        
+        if (this.onBaselineComplete) {
+          this.onBaselineComplete(this.baseline);
+        }
+      }
+    }, 1000);
+    
+    return false;
+  }
 }
 
-export default UserBehaviorModel; 
+export default UserBehaviorModel;

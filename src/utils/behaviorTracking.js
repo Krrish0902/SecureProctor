@@ -368,3 +368,12 @@ export const recordQuestionInteraction = (questionId, action, data = {}) => {
     }
   }
 }; 
+// Add window storage array
+let behaviorWindows = [];
+
+export const storeCurrentWindow = () => {
+  behaviorWindows.push(getCurrentBehaviorWindow());
+  startNewBehaviorWindow();
+};
+
+export const getBehaviorWindows = () => behaviorWindows;
