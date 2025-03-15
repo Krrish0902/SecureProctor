@@ -18,6 +18,7 @@ class UserBehaviorModel {
     this.onBaselineProgressUpdate = null;
     this.onBaselineComplete = null;
     this.baseRiskLevel = 10; // Minimum risk level at all times
+    this.previousRiskScore = this.baseRiskLevel; // Add this line to track previous score
   }
   
   /**
@@ -160,20 +161,20 @@ class UserBehaviorModel {
 
     // Risk weights add up to 90% as specified
     const riskWeights = {
-      tabSwitching: 30,     // Priority 1: 30%
+      tabSwitching: 30,
       mouseExit: {
-        normal: 15,    // Regular exits now worth 15%
-        tabBar: 25     // Tab bar exits worth 25%
+        normal: 15,
+        tabBar: 25
       },
-      typingBurst: 15,      // Priority 3: 15%
-      keyboardShortcut: 10, // Priority 4: 10%
-      rightClick: 5,        // Priority 5: 5%
-      dragEvent: 5,         // Priority 6: 5%
-      inactivity: 5         // Priority 7: 5%
+      typingBurst: 15,
+      keyboardShortcut: 10,
+      rightClick: 5,
+      dragEvent: 5,
+      inactivity: 5
     };
 
     let riskFactors = {};
-    let totalRiskScore = 0;
+    let totalRiskScore = Math.max(this.baseRiskLevel, this.previousRiskScore); // Fix the undefined variable
 
     // Calculate individual risk factors
     
@@ -227,8 +228,11 @@ class UserBehaviorModel {
     totalRiskScore += (inactivityRisk * riskWeights.inactivity) / 100;
     riskFactors.inactivity = inactivityRisk;
 
-    // Final score will never decrease below baseRiskLevel
-    const finalRiskScore = Math.min(100, Math.max(this.baseRiskLevel, totalRiskScore + this.baseRiskLevel));
+    // Ensure score only increases
+    const finalRiskScore = Math.min(100, Math.max(this.baseRiskLevel, totalRiskScore));
+
+    // Update previous score before returning
+    this.previousRiskScore = finalRiskScore;
 
     return {
       score: finalRiskScore,

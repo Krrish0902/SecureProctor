@@ -19,75 +19,71 @@ const RiskMeter = ({ riskScore, riskFactors }) => {
   const [warningMessage, setWarningMessage] = useState(null);
   const [scoreChange, setScoreChange] = useState(0); // Track score change
 
+  // Add warning thresholds
+  const WARNING_THRESHOLDS = {
+    MODERATE: 45,
+    HIGH: 65,
+    CRITICAL: 85
+  };
+
   // Add a new effect to handle score changes
   useEffect(() => {
-    if (riskScore !== previousScore) {
+    if (riskScore !== previousScore && riskScore > previousScore) {
       const currentChange = riskScore - previousScore;
       setScoreChange(currentChange);
       
-      if (Math.abs(currentChange) >= 2) {
+      // Check if we've crossed any threshold
+      const crossedThreshold = 
+        (previousScore < WARNING_THRESHOLDS.MODERATE && riskScore >= WARNING_THRESHOLDS.MODERATE) ||
+        (previousScore < WARNING_THRESHOLDS.HIGH && riskScore >= WARNING_THRESHOLDS.HIGH) ||
+        (previousScore < WARNING_THRESHOLDS.CRITICAL && riskScore >= WARNING_THRESHOLDS.CRITICAL);
+
+      if (crossedThreshold) {
         let message = {
-          title: `Risk Level ${currentChange > 0 ? 'Increased' : 'Decreased'}`,
-          subtitle: currentChange > 0 
-            ? "Risk increased due to suspicious behavior patterns."
-            : "Risk decreased due to consistent good behavior.",
+          title: riskScore >= WARNING_THRESHOLDS.CRITICAL ? 'Critical Risk Level' :
+                 riskScore >= WARNING_THRESHOLDS.HIGH ? 'High Risk Level' :
+                 'Moderate Risk Level',
+          subtitle: riskScore >= WARNING_THRESHOLDS.CRITICAL ? "Immediate attention required - multiple violations detected" :
+                   riskScore >= WARNING_THRESHOLDS.HIGH ? "Significant suspicious behavior detected" :
+                   "Potentially suspicious behavior detected",
           details: []
         };
 
-        // If risk is decreasing due to time
-        if (riskFactors && !riskFactors.hasNewRiskFactors && currentChange < 0) {
-          const minutes = Math.floor(riskFactors.timeSinceLastRisk / 60);
-          message.details.push({
-            factor: 'Good Behavior',
-            detail: `No suspicious activity detected for ${minutes} minutes`,
-            severity: 'Low'
-          });
-        }
-
-        // Add risk factor details based on change direction
+        // Add risk factor details since score increased
         if (riskFactors) {
-          if (currentChange > 0) {
-            // Only show risk factors for increases
-            if (riskFactors.inactivity) {
-              message.details.push({
-                factor: 'Inactivity',
-                detail: 'No activity detected in the last window',
-                severity: 'High'
-              });
-            }
-            if (riskFactors.tabSwitchFrequency > 2) {
-              message.details.push({
-                factor: 'Tab Switching',
-                detail: `Switched tabs ${Math.round(riskFactors.tabSwitchFrequency)} times per minute`,
-                severity: riskFactors.tabSwitchFrequency > 4 ? 'High' : 'Moderate'
-              });
-            }
-            if (riskFactors.keyLatency > 1.5) {
-              message.details.push({
-                factor: 'Typing Pattern',
-                detail: 'Significant change in typing rhythm detected',
-                severity: riskFactors.keyLatency > 2 ? 'High' : 'Moderate'
-              });
-            }
-            if (riskFactors.mouseSpeed > 2) {
-              message.details.push({
-                factor: 'Mouse Movement',
-                detail: 'Unusual mouse movement patterns detected',
-                severity: riskFactors.mouseSpeed > 3 ? 'High' : 'Moderate'
-              });
-            }
-            if (riskFactors.mouseExit && (riskFactors.mouseExit.regular > 50 || riskFactors.mouseExit.tabBar > 50)) {
-              message.details.push({
-                factor: 'Mouse Exit Pattern',
-                detail: `${riskFactors.mouseExit.tabBarExits} tab bar exits detected. ${riskFactors.mouseExit.totalExits} total exits.`,
-                severity: riskFactors.mouseExit.tabBar > 50 ? 'High' : 'Moderate'
-              });
-            }
-          } else {
+          if (riskFactors.inactivity) {
             message.details.push({
-              factor: 'Behavior Improvement',
-              detail: 'Your behavior patterns have normalized compared to your baseline',
-              severity: 'Moderate'
+              factor: 'Inactivity',
+              detail: 'No activity detected in the last window',
+              severity: 'High'
+            });
+          }
+          if (riskFactors.tabSwitchFrequency > 2) {
+            message.details.push({
+              factor: 'Tab Switching',
+              detail: `Switched tabs ${Math.round(riskFactors.tabSwitchFrequency)} times per minute`,
+              severity: riskFactors.tabSwitchFrequency > 4 ? 'High' : 'Moderate'
+            });
+          }
+          if (riskFactors.keyLatency > 1.5) {
+            message.details.push({
+              factor: 'Typing Pattern',
+              detail: 'Significant change in typing rhythm detected',
+              severity: riskFactors.keyLatency > 2 ? 'High' : 'Moderate'
+            });
+          }
+          if (riskFactors.mouseSpeed > 2) {
+            message.details.push({
+              factor: 'Mouse Movement',
+              detail: 'Unusual mouse movement patterns detected',
+              severity: riskFactors.mouseSpeed > 3 ? 'High' : 'Moderate'
+            });
+          }
+          if (riskFactors.mouseExit && (riskFactors.mouseExit.regular > 50 || riskFactors.mouseExit.tabBar > 50)) {
+            message.details.push({
+              factor: 'Mouse Exit Pattern',
+              detail: `${riskFactors.mouseExit.tabBarExits} tab bar exits detected. ${riskFactors.mouseExit.totalExits} total exits.`,
+              severity: riskFactors.mouseExit.tabBar > 50 ? 'High' : 'Moderate'
             });
           }
         }
@@ -96,7 +92,6 @@ const RiskMeter = ({ riskScore, riskFactors }) => {
         setShowWarning(true);
       }
       
-      // Update previous score after handling the change
       setPreviousScore(riskScore);
     }
   }, [riskScore]); // Only depend on riskScore, not previousScore
@@ -169,10 +164,10 @@ const RiskMeter = ({ riskScore, riskFactors }) => {
   };
 
   const getRiskLevel = (score) => {
-    if (score < 30) return { level: 'Low', color: '#4CAF50' };
-    if (score < 60) return { level: 'Moderate', color: '#FFC107' };
-    if (score < 80) return { level: 'High', color: '#FF9800' };
-    return { level: 'Very High', color: '#F44336' };
+    if (score < WARNING_THRESHOLDS.MODERATE) return { level: 'Low', color: '#4CAF50' };
+    if (score < WARNING_THRESHOLDS.HIGH) return { level: 'Moderate', color: '#FFC107' };
+    if (score < WARNING_THRESHOLDS.CRITICAL) return { level: 'High', color: '#FF9800' };
+    return { level: 'Critical', color: '#F44336' };
   };
 
   const risk = getRiskLevel(riskScore);
