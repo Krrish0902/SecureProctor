@@ -69,7 +69,24 @@ class UserBehaviorModel {
     
     return false;
   }
-  
+ 
+  // Add methods for enhanced pattern analysis
+  analyzeKeystrokePattern(keystrokes) {
+    return {
+      meanLatency: this.average(keystrokes.map(k => k.latency)),
+      stdDevLatency: this.standardDeviation(keystrokes.map(k => k.latency)),
+      meanDuration: this.average(keystrokes.map(k => k.pressDuration)),
+      stdDevDuration: this.standardDeviation(keystrokes.map(k => k.pressDuration))
+    };
+  }
+
+  analyzeMousePattern(movements) {
+    return {
+      meanSpeed: this.average(movements.map(m => m.speed)),
+      stdDevSpeed: this.standardDeviation(movements.map(m => m.speed)),
+      directionChanges: this.average(movements.map(m => m.directionChange || 0))
+    };
+  }
   /**
    * Add behavioral data to the model
    * @param {Object} behaviorWindow - Current behavior window data

@@ -6,7 +6,8 @@ import sampleExamData from '../utils/sampleExamData';
 import UserBehaviorModel from '../models/UserBehaviorModel';
 import { 
   initBehaviorTracking, 
-  getCurrentBehaviorWindow, 
+  getCurrentBehaviorWindow,
+  storeCurrentWindow,
   recordQuestionInteraction 
 } from '../utils/behaviorTracking';
 
@@ -133,7 +134,23 @@ const ExamPage = () => {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+  // Add risk assessment interval
+  useEffect(() => {
+    if (!isBaselineCollecting && userModel) {
+      const riskInterval = setInterval(() => {
+        const window = getCurrentBehaviorWindow();
+        const score = userModel.detectAnomalies(window);
+        setRiskScore(score);
+        
+        if (score > 60) {
+          storeCurrentWindow();
+        }
+      }, 5000);
   
+      return () => clearInterval(riskInterval);
+    }
+  }, [isBaselineCollecting, userModel]);
+
   // Get current question
   const currentQuestion = examData.questions[currentQuestionIndex];
   
