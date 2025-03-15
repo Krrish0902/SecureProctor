@@ -21,6 +21,8 @@ const ExamPage = () => {
   const [baselineProgress, setBaselineProgress] = useState(0);
   const [riskScore, setRiskScore] = useState(0);
   const [userModel, setUserModel] = useState(null);
+  const [riskFactors, setRiskFactors] = useState(null);
+  const [isRecalculatingBaseline, setIsRecalculatingBaseline] = useState(false);
   
   // Initialize behavior tracking and user model
   useEffect(() => {
@@ -134,15 +136,16 @@ const ExamPage = () => {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  // Add risk assessment interval
+  // Remove duplicate and keep original risk assessment interval
   useEffect(() => {
     if (!isBaselineCollecting && userModel) {
       const riskInterval = setInterval(() => {
         const window = getCurrentBehaviorWindow();
-        const score = userModel.detectAnomalies(window);
-        setRiskScore(score);
+        const assessment = userModel.detectAnomalies(window);
+        setRiskScore(assessment.score);
+        setRiskFactors(assessment.factors);
         
-        if (score > 60) {
+        if (assessment.score > 60) {
           storeCurrentWindow();
         }
       }, 5000);
@@ -150,6 +153,25 @@ const ExamPage = () => {
       return () => clearInterval(riskInterval);
     }
   }, [isBaselineCollecting, userModel]);
+
+  const handleRecalculateBaseline = () => {
+    if (window.confirm('Are you sure you want to recalculate the baseline? This will reset all existing behavioral patterns.')) {
+      setIsRecalculatingBaseline(true);
+      setIsBaselineCollecting(true);
+      setBaselineProgress(0);
+      
+      userModel.recalculateBaseline(
+        (progress) => {
+          setBaselineProgress(progress);
+        },
+        () => {
+          setIsBaselineCollecting(false);
+          setBaselineProgress(100);
+          setIsRecalculatingBaseline(false);
+        }
+      );
+    }
+  };
 
   // Get current question
   const currentQuestion = examData.questions[currentQuestionIndex];
@@ -170,14 +192,14 @@ const ExamPage = () => {
         </div>
       </div>
       
-      {/* Baseline Progress */}
-      {isBaselineCollecting && (
-        <BaselineProgress progress={baselineProgress} />
-      )}
-      
-      {/* Risk Meter */}
-      {!isBaselineCollecting && (
-        <RiskMeter riskScore={riskScore} />
+      {/* Baseline Progress or Risk Meter */}
+      {isBaselineCollecting ? (
+        <BaselineProgress 
+          progress={baselineProgress} 
+          isRecalculating={isRecalculatingBaseline} 
+        />
+      ) : (
+        <RiskMeter riskScore={riskScore} riskFactors={riskFactors} />
       )}
       
       {/* Question Card */}
@@ -276,4 +298,4 @@ const ExamPage = () => {
   );
 };
 
-export default ExamPage; 
+export default ExamPage;
