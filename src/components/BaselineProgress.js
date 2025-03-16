@@ -7,8 +7,9 @@ import React from 'react';
  * 
  * @param {Object} props
  * @param {Number} props.progress - The current progress percentage (0-100)
+ * @param {Boolean} props.isRecalculating - Whether the baseline is being recalculated
  */
-const BaselineProgress = ({ progress }) => {
+const BaselineProgress = ({ progress, isRecalculating = false }) => {
   // Ensure the progress is within bounds
   const normalizedProgress = Math.min(100, Math.max(0, progress));
   
@@ -18,10 +19,14 @@ const BaselineProgress = ({ progress }) => {
   return (
     <div className="baseline-progress-container" style={{ marginBottom: '2rem' }}>
       <div className="card">
-        <h3 className="card-title">Establishing Your Behavioral Baseline</h3>
+        <h3 className="card-title">
+          {isRecalculating ? 'Recalculating Behavioral Baseline' : 'Establishing Your Behavioral Baseline'}
+        </h3>
         
         <p>
-          We're collecting data to establish your unique behavioral patterns. 
+          {isRecalculating 
+            ? "We're rebuilding your behavioral patterns from scratch to improve accuracy."
+            : "We're collecting data to establish your unique behavioral patterns."}
           This helps us accurately detect anomalies during the exam.
         </p>
         
