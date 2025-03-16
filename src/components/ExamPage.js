@@ -12,6 +12,12 @@ import {
 } from '../utils/behaviorTracking';
 
 const ExamPage = () => {
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const navigate = useNavigate();
   const [examData] = useState(sampleExamData);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -118,24 +124,56 @@ const ExamPage = () => {
   };
   
   const handleSubmitExam = () => {
-    // In a real app, you would submit the answers to a server
-    alert('Exam submitted successfully!');
-    
-    // Update the user model with the completed exam data
-    if (userModel) {
-      userModel.updateFromCompletedExam(getCurrentBehaviorWindow());
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      // Get current behavioral data
+      const behaviorWindow = getCurrentBehaviorWindow();
+      const sessionId = `examSession_${Date.now()}`;
+      
+      // Create exam session data
+      const sessionData = {
+        sessionId,
+        userId: user.id,
+        userName: user.name,
+        startTime: behaviorWindow.startTime,
+        duration: behaviorWindow.durationSeconds,
+        progress: calculateProgress(),
+        riskScore: riskScore,
+        riskFactors: riskFactors,
+        tabSwitches: behaviorWindow.tabSwitches,
+        mouseExits: behaviorWindow.mouseExits,
+        inactivityPeriods: behaviorWindow.inactivityPeriods,
+        answers: answers,
+        isCompleted: true
+      };
+
+      // Store in localStorage
+      localStorage.setItem(sessionId, JSON.stringify(sessionData));
+
+      // Update the user model
+      if (userModel) {
+        userModel.updateFromCompletedExam(behaviorWindow);
+      }
+
+      alert('Exam submitted successfully!');
+      navigate('/');
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      alert('Error submitting exam. Please try again.');
     }
-    
-    // Navigate to a results page (not implemented in this demo)
-    navigate('/');
   };
-  
-  // Format time remaining as MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+  const calculateProgress = () => {
+    const totalQuestions = examData.questions.length;
+    const answeredQuestions = Object.keys(answers).length;
+    return Math.round((answeredQuestions / totalQuestions) * 100);
   };
+
   // Remove duplicate and keep original risk assessment interval
   useEffect(() => {
     if (!isBaselineCollecting && userModel) {
