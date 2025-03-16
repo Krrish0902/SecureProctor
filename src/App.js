@@ -11,6 +11,7 @@ import Home from './components/Home';
 import ExamPage from './components/ExamPage';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
+import Signup from './components/Signup';
 
 function App() {
   return (
@@ -22,6 +23,8 @@ function App() {
           <Route path="/exam" element={<ExamPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
         </Routes>
       </main>
       <Footer />

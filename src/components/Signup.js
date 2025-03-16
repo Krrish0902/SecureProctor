@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const Login = () => {
+const Signup = () => {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
   });
@@ -19,36 +20,49 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Simple validation
-    if (!formData.email || !formData.password) {
+    if (!formData.name || !formData.email || !formData.password) {
       setError('Please fill in all fields');
       return;
     }
-    
-    // Simulate login (Replace with API call in real app)
+
+    // Store user info in localStorage (for demo purposes only)
     localStorage.setItem('user', JSON.stringify({
-      id: '12345',
+      id: Date.now(),
+      name: formData.name,
       email: formData.email,
-      name: 'Demo User',
     }));
-    
-    // Redirect to exam page
-    navigate('/exam');
+
+    // Redirect to login page
+    navigate('/login');
   };
 
   return (
-    <div className="login-container">
+    <div className="signup-container">
       <div className="card" style={{ maxWidth: '500px', margin: '0 auto' }}>
-        <h2 className="card-title">Login to SecureProctor</h2>
-        
+        <h2 className="card-title">Sign Up for SecureProctor</h2>
+
         {error && (
           <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="name" className="form-label">Full Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              className="form-input"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter your name"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="email" className="form-label">Email</label>
             <input
@@ -61,7 +75,7 @@ const Login = () => {
               placeholder="Enter your email"
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="password" className="form-label">Password</label>
             <input
@@ -74,25 +88,18 @@ const Login = () => {
               placeholder="Enter your password"
             />
           </div>
-          
+
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-            Login
+            Sign Up
           </button>
         </form>
-        
+
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <p>Don't have an account? 
-            <span 
-              style={{ color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px' }} 
-              onClick={() => navigate('/signup')}
-            >
-              Sign up
-            </span>
-          </p>
+          <p>Already have an account? <span style={{ color: 'var(--primary-color)', cursor: 'pointer' }} onClick={() => navigate('/login')}>Login</span></p>
         </div>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default Signup;
