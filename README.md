@@ -46,7 +46,6 @@ The application will be available at `http://localhost:3000`
 
 - React.js
 - React Router DOM
-- Chart.js
 - Web Vitals
 - Local Storage for data persistence
 
