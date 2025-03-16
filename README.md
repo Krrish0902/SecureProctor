@@ -107,6 +107,15 @@ Monitors various user interactions:
 - Screen exit patterns
 - Typing burst detection
 
+
+## Future Development
+# ML Integration
+  In future updates, we plan to integrate Machine Learning (ML) to enhance the system’s ability to detect suspicious activities during online assessments. Instead of 
+  relying on camera or audio surveillance, the ML model will analyze behavioral patterns such as mouse dynamics, unusual keystrokes, frequent tab switching, prolonged 
+  inactivity, and copy-paste actions. By learning from past user interactions, the system will be able to identify anomalies that may indicate dishonest behavior. 
+  This AI-driven approach aims to improve exam integrity while maintaining user privacy. The ML models will be developed using Python (Scikit-learn, 
+  TensorFlow/PyTorch) and integrated with the backend for real-time analysis.
+
 ## Contributing
 
 1. Fork the repository
