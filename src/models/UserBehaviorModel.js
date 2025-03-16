@@ -17,6 +17,8 @@ class UserBehaviorModel {
     this.baselineProgress = 0;
     this.onBaselineProgressUpdate = null;
     this.onBaselineComplete = null;
+    this.baseRiskLevel = 10; // Minimum risk level at all times
+    this.previousRiskScore = this.baseRiskLevel; // Add this line to track previous score
   }
   
   /**
@@ -154,126 +156,134 @@ class UserBehaviorModel {
    */
   detectAnomalies(currentWindow) {
     if (!this.baselineEstablished) {
-      return 0; // No baseline yet, return zero risk
+      return { score: 0, factors: {} };
     }
-    
-    // Extract metrics from current window
-    const currentKeyLatency = this.average(
-      currentWindow.keystrokes.map(k => k.latency).filter(l => l !== null)
-    );
-    
-    const currentKeyPressDuration = this.average(
-      currentWindow.keystrokes.map(k => k.pressDuration).filter(d => d !== undefined)
-    );
-    
-    const currentMouseSpeed = this.average(
-      currentWindow.mouseMovements.map(m => m.speed).filter(s => s !== undefined)
-    );
-    
-    const currentMouseDirectionChange = this.average(
-      currentWindow.mouseMovements.map(m => m.directionChange).filter(d => d !== undefined)
-    );
-    
-    const currentTabSwitchFrequency = 
-      currentWindow.tabSwitches / (currentWindow.durationSeconds / 60); // per minute
-    
-    // Add inactivity check
-  const isInactive = 
-  (!currentWindow.keystrokes || currentWindow.keystrokes.length === 0) &&
-  (!currentWindow.mouseMovements || currentWindow.mouseMovements.length === 0);
 
-  if (isInactive) {
+    // Risk weights add up to 90% as specified
+    const riskWeights = {
+      tabSwitching: 30,
+      mouseExit: {
+        normal: 15,
+        tabBar: 25
+      },
+      typingBurst: 15,
+      keyboardShortcut: 10,
+      rightClick: 5,
+      dragEvent: 5,
+      inactivity: 5
+    };
+
+    let riskFactors = {};
+    let totalRiskScore = Math.max(this.baseRiskLevel, this.previousRiskScore); // Fix the undefined variable
+
+    // Calculate individual risk factors
+    
+    // Tab switching (30%)
+    const tabSwitchRisk = Math.min(100, (currentWindow.tabSwitches * 25)); // 4 switches = 100% risk
+    totalRiskScore += (tabSwitchRisk * riskWeights.tabSwitching) / 100;
+    riskFactors.tabSwitching = tabSwitchRisk;
+
+    // Calculate regular mouse exit risk (15%)
+    const regularExits = currentWindow.mouseExits.count - currentWindow.mouseExits.topEdgeExits;
+    const regularExitRisk = Math.min(100, (regularExits * 33.33)); // 3 regular exits = 100% risk
+    totalRiskScore += (regularExitRisk * riskWeights.mouseExit.normal) / 100;
+    
+    // Calculate tab bar exit risk (25%) - More severe
+    const tabBarExitRisk = Math.min(100, (currentWindow.mouseExits.topEdgeExits * 50)); // 2 tab bar exits = 100% risk
+    totalRiskScore += (tabBarExitRisk * riskWeights.mouseExit.tabBar) / 100;
+    
+    riskFactors.mouseExit = {
+      regular: regularExitRisk,
+      tabBar: tabBarExitRisk,
+      totalExits: currentWindow.mouseExits.count,
+      tabBarExits: currentWindow.mouseExits.topEdgeExits
+    };
+
+    // Typing bursts detection (15%)
+    const typingBursts = this.detectTypingBursts(currentWindow.keystrokes);
+    const burstRisk = Math.min(100, (typingBursts * 50)); // 2 bursts = 100% risk
+    totalRiskScore += (burstRisk * riskWeights.typingBurst) / 100;
+    riskFactors.typingBurst = burstRisk;
+
+    // Keyboard shortcuts (10%)
+    const shortcutCount = currentWindow.keyboardShortcuts.filter(s => 
+      ['c', 'v', 'x'].includes(s.key)
+    ).length;
+    const shortcutRisk = Math.min(100, (shortcutCount * 33.33)); // 3 shortcuts = 100% risk
+    totalRiskScore += (shortcutRisk * riskWeights.keyboardShortcut) / 100;
+    riskFactors.keyboardShortcut = shortcutRisk;
+
+    // Right clicks (5%)
+    const rightClickRisk = Math.min(100, (currentWindow.rightClicks * 50)); // 2 right clicks = 100% risk
+    totalRiskScore += (rightClickRisk * riskWeights.rightClick) / 100;
+    riskFactors.rightClick = rightClickRisk;
+
+    // Drag events (5%)
+    const dragRisk = Math.min(100, (currentWindow.dragEvents * 50)); // 2 drags = 100% risk
+    totalRiskScore += (dragRisk * riskWeights.dragEvent) / 100;
+    riskFactors.dragEvent = dragRisk;
+
+    // Inactivity (5%)
+    const inactivityRisk = this.calculateInactivityRisk(currentWindow);
+    totalRiskScore += (inactivityRisk * riskWeights.inactivity) / 100;
+    riskFactors.inactivity = inactivityRisk;
+
+    // Ensure score only increases
+    const finalRiskScore = Math.min(100, Math.max(this.baseRiskLevel, totalRiskScore));
+
+    // Update previous score before returning
+    this.previousRiskScore = finalRiskScore;
+
     return {
-      score: 75, // High risk score for complete inactivity
-      factors: {
-        keyLatency: 0,
-        tabSwitchFrequency: 0,
-        mouseSpeed: 0,
-        mouseDirectionChange: 0,
-        inactivity: true // New flag to indicate inactivity
-      }
+      score: finalRiskScore,
+      factors: riskFactors,
+      weights: riskWeights
     };
-  }  
-    // Calculate deviations from baseline (z-scores)
-    let deviations = {};
+  }
+
+  detectTypingBursts(keystrokes) {
+    if (!keystrokes.length) return 0;
     
-    if (!isNaN(currentKeyLatency) && this.baseline.keyLatency.stdDev > 0) {
-      deviations.keyLatency = Math.abs(
-        (currentKeyLatency - this.baseline.keyLatency.mean) / 
-        this.baseline.keyLatency.stdDev
-      );
-    } else {
-      deviations.keyLatency = 0;
-    }
+    const avgWPM = 40; // Average typing speed
+    const burstThreshold = avgWPM * 2; // Suspicious WPM threshold
     
-    if (!isNaN(currentKeyPressDuration) && this.baseline.keyPressDuration.stdDev > 0) {
-      deviations.keyPressDuration = Math.abs(
-        (currentKeyPressDuration - this.baseline.keyPressDuration.mean) / 
-        this.baseline.keyPressDuration.stdDev
-      );
-    } else {
-      deviations.keyPressDuration = 0;
-    }
+    // Group keystrokes into 5-second windows
+    const windows = [];
+    let currentWindow = [];
+    const windowSize = 5000; // 5 seconds
     
-    if (!isNaN(currentMouseSpeed) && this.baseline.mouseSpeeds.stdDev > 0) {
-      deviations.mouseSpeed = Math.abs(
-        (currentMouseSpeed - this.baseline.mouseSpeeds.mean) / 
-        this.baseline.mouseSpeeds.stdDev
-      );
-    } else {
-      deviations.mouseSpeed = 0;
-    }
-    
-    if (!isNaN(currentMouseDirectionChange) && this.baseline.mouseDirectionChanges.stdDev > 0) {
-      deviations.mouseDirectionChange = Math.abs(
-        (currentMouseDirectionChange - this.baseline.mouseDirectionChanges.mean) / 
-        this.baseline.mouseDirectionChanges.stdDev
-      );
-    } else {
-      deviations.mouseDirectionChange = 0;
-    }
-    
-    if (!isNaN(currentTabSwitchFrequency) && this.baseline.tabSwitches.frequency > 0) {
-      deviations.tabSwitchFrequency = Math.abs(
-        (currentTabSwitchFrequency - this.baseline.tabSwitches.frequency) / 
-        Math.max(0.1, this.baseline.tabSwitches.frequency) // Avoid division by zero
-      );
-    } else {
-      deviations.tabSwitchFrequency = 0;
-    }
-    
-    // Combine deviations into anomaly score (0-100)
-    // Weight factors can be adjusted based on importance
-    const weights = {
-      keyLatency: 15,
-      keyPressDuration: 15,
-      mouseSpeed: 20,
-      mouseDirectionChange: 10,
-      tabSwitchFrequency: 40
-    };
-    
-    let weightedScore = 0;
-    let totalWeight = 0;
-    
-    for (const [key, deviation] of Object.entries(deviations)) {
-      if (!isNaN(deviation)) {
-        weightedScore += deviation * weights[key];
-        totalWeight += weights[key];
+    keystrokes.forEach(stroke => {
+      if (currentWindow.length === 0 || 
+          stroke.downTime - currentWindow[0].downTime < windowSize) {
+        currentWindow.push(stroke);
+      } else {
+        windows.push(currentWindow);
+        currentWindow = [stroke];
       }
+    });
+    
+    if (currentWindow.length > 0) {
+      windows.push(currentWindow);
     }
     
-    // Normalize to 0-100 scale
-    const anomalyScore = Math.min(100, (weightedScore / totalWeight) * 100);
+    // Count suspicious bursts
+    return windows.filter(window => {
+      const wpm = (window.length / 5) * 60; // Convert to WPM
+      return wpm > burstThreshold;
+    }).length;
+  }
+
+  calculateInactivityRisk(currentWindow) {
+    if (!currentWindow.questions.length) return 0;
     
-    return {
-      score: anomalyScore,
-      factors: {
-        keyLatency: deviations.keyLatency,
-        tabSwitchFrequency: deviations.tabSwitchFrequency,
-        mouseSpeed: deviations.mouseSpeed,
-        mouseDirectionChange: deviations.mouseDirectionChange
-      }
-    };
+    const avgTimePerQuestion = this.baseline.avgTimePerQuestion || 60; // Default 1 minute
+    const maxInactiveTime = avgTimePerQuestion * 2; // Double the average time
+    
+    const inactivePeriods = currentWindow.inactivityPeriods.filter(period => 
+      period.duration > maxInactiveTime
+    );
+    
+    return Math.min(100, (inactivePeriods.length * 20)); // 20% risk per long inactive period
   }
   
   /**

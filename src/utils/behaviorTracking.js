@@ -15,6 +15,8 @@ let behaviorData = {
   lastMousePosition: null,
   lastMouseTime: null,
   tabSwitchStartTime: null,
+  lastActiveTime: Date.now(),
+  keyboardShortcuts: [],
   currentBehaviorWindow: {
     keystrokes: [],
     mouseMovements: [],
@@ -25,7 +27,18 @@ let behaviorData = {
     startTime: Date.now(),
     durationSeconds: 0,
     questions: [],
-    questionsAnswered: 0
+    questionsAnswered: 0,
+    mouseExits: {
+      count: 0,
+      topEdgeExits: 0,  // Track exits through top edge (tab bar area)
+      positions: []      // Store exit coordinates
+    },
+    typingBursts: [],
+    keyboardShortcuts: [],
+    rightClicks: 0,
+    dragEvents: 0,
+    inactivityPeriods: [],
+    avgTimePerQuestion: 0
   }
 };
 
@@ -40,6 +53,7 @@ export const initBehaviorTracking = () => {
   setupKeystrokeTracking();
   setupMouseTracking();
   setupFocusTracking();
+  setupEventListeners();
   
   // Start the behavior window timer
   startBehaviorWindowTimer();
@@ -51,6 +65,10 @@ export const initBehaviorTracking = () => {
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('click', handleMouseClick);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('mouseleave', handleMouseExit);
+    document.removeEventListener('keydown', handleKeyboardShortcut);
+    document.removeEventListener('dragstart', handleDragStart);
+    document.removeEventListener('contextmenu', handleContextMenu);
   };
 };
 
@@ -67,6 +85,8 @@ export const resetBehaviorData = () => {
     lastMousePosition: null,
     lastMouseTime: null,
     tabSwitchStartTime: null,
+    lastActiveTime: Date.now(),
+    keyboardShortcuts: [],
     currentBehaviorWindow: {
       keystrokes: [],
       mouseMovements: [],
@@ -77,7 +97,18 @@ export const resetBehaviorData = () => {
       startTime: Date.now(),
       durationSeconds: 0,
       questions: [],
-      questionsAnswered: 0
+      questionsAnswered: 0,
+      mouseExits: {
+        count: 0,
+        topEdgeExits: 0,  // Track exits through top edge (tab bar area)
+        positions: []      // Store exit coordinates
+      },
+      typingBursts: [],
+      keyboardShortcuts: [],
+      rightClicks: 0,
+      dragEvents: 0,
+      inactivityPeriods: [],
+      avgTimePerQuestion: 0
     }
   };
 };
@@ -118,7 +149,18 @@ export const startNewBehaviorWindow = () => {
     startTime: Date.now(),
     durationSeconds: 0,
     questions: [],
-    questionsAnswered: 0
+    questionsAnswered: 0,
+    mouseExits: {
+      count: 0,
+      topEdgeExits: 0,  // Track exits through top edge (tab bar area)
+      positions: []      // Store exit coordinates
+    },
+    typingBursts: [],
+    keyboardShortcuts: [],
+    rightClicks: 0,
+    dragEvents: 0,
+    inactivityPeriods: [],
+    avgTimePerQuestion: 0
   };
 };
 
@@ -377,3 +419,59 @@ export const storeCurrentWindow = () => {
 };
 
 export const getBehaviorWindows = () => behaviorWindows;
+
+// Add handlers for new events
+const handleMouseExit = (e) => {
+  if (e.relatedTarget === null) {
+    const exitData = {
+      x: e.clientX,
+      y: e.clientY,
+      timestamp: Date.now(),
+      isTopEdge: e.clientY <= 5  // Consider top 5px as tab bar area
+    };
+    
+    behaviorData.currentBehaviorWindow.mouseExits.positions.push(exitData);
+    behaviorData.currentBehaviorWindow.mouseExits.count++;
+    
+    if (exitData.isTopEdge) {
+      behaviorData.currentBehaviorWindow.mouseExits.topEdgeExits++;
+    }
+  }
+};
+
+const handleKeyboardShortcut = (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    const shortcut = {
+      key: e.key.toLowerCase(),
+      timestamp: Date.now()
+    };
+    behaviorData.keyboardShortcuts.push(shortcut);
+    behaviorData.currentBehaviorWindow.keyboardShortcuts.push(shortcut);
+  }
+};
+
+const handleDragStart = () => {
+  behaviorData.currentBehaviorWindow.dragEvents++;
+};
+
+const handleContextMenu = (e) => {
+  e.preventDefault(); // Prevent right-click menu
+  behaviorData.currentBehaviorWindow.rightClicks++;
+};
+
+// Update setupEventListeners
+const setupEventListeners = () => {
+  // ...existing listeners...
+  document.addEventListener('mouseleave', handleMouseExit);
+  document.addEventListener('keydown', handleKeyboardShortcut);
+  document.addEventListener('dragstart', handleDragStart);
+  document.addEventListener('contextmenu', handleContextMenu);
+  
+  return () => {
+    // ...existing cleanup...
+    document.removeEventListener('mouseleave', handleMouseExit);
+    document.removeEventListener('keydown', handleKeyboardShortcut);
+    document.removeEventListener('dragstart', handleDragStart);
+    document.removeEventListener('contextmenu', handleContextMenu);
+  };
+};

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import UserBehaviorModel from '../models/UserBehaviorModel';
 
 const Home = () => {
   const [hasBaseline, setHasBaseline] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateProgress, setRecalculateProgress] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user has baseline
@@ -41,6 +42,18 @@ const Home = () => {
     }
   };
 
+  // Add check for login before exam
+  const handleStartExam = () => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
+      if (window.confirm('Please log in first to take an exam. Would you like to log in now?')) {
+        navigate('/login');
+      }
+      return;
+    }
+    navigate('/exam');
+  };
+
   return (
     <div className="home-container">
       <section className="hero">
@@ -51,11 +64,11 @@ const Home = () => {
           No invasive video surveillance, just smart behavioral analysis.
         </p>
         <div className="cta-buttons">
-          <Link to="/exam" className="btn btn-primary">
-            Take an Exam
-          </Link>
-          <Link to="/login" className="btn btn-secondary" style={{ marginLeft: '10px' }}>
-            Login
+          <button onClick={handleStartExam} className="btn btn-primary">
+            Take Exam
+          </button>
+          <Link to="/admin" className="btn btn-secondary" style={{ marginLeft: '10px' }}>
+            Admin Dashboard
           </Link>
         </div>
       </section>
