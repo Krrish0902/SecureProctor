@@ -19,25 +19,52 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // For demo purposes, we'll use a simple validation
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
-      return;
+    setError('');
+
+    try {
+      // Demo users for testing
+      const demoUsers = {
+        'admin@test.com': {
+          id: 'admin_1',
+          name: 'Admin User',
+          password: 'admin123',
+          role: 'admin'
+        },
+        'student@test.com': {
+          id: 'student_1',
+          name: 'Student User',
+          password: 'student123',
+          role: 'student'
+        }
+      };
+
+      const user = demoUsers[formData.email];
+
+      if (user && user.password === formData.password) {
+        // Store user data in localStorage
+        const userData = {
+          id: user.id,
+          name: user.name,
+          email: formData.email,
+          role: user.role,
+          loginTime: Date.now()
+        };
+        
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        // Redirect based on role
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/exam');
+        }
+      } else {
+        setError('Invalid email or password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login');
     }
-    
-    // For the hackathon, we'll just simulate a successful login
-    // In a real app, you would make an API call to authenticate
-    
-    // Store user info in localStorage (for demo purposes only)
-    localStorage.setItem('user', JSON.stringify({
-      id: '12345',
-      email: formData.email,
-      name: 'Demo User',
-    }));
-    
-    // Redirect to exam page
-    navigate('/exam');
   };
 
   return (
@@ -91,4 +118,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;
