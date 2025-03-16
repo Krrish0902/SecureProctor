@@ -124,4 +124,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Created as part of a hackathon project
 - Inspired by the need for privacy-respecting online proctoring solutions
-- Built with focus on user privacy and academic integrity
+- Built with focus on user privacy and academic integrity.
